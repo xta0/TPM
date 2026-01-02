@@ -37,34 +37,43 @@ final class MediaStore {
     FileManager.default.createFile(atPath: tmpURL.path, contents: nil)
     let fh = try FileHandle(forWritingTo: tmpURL)
 
-    do {
-      // Stream body to disk. Vapor’s streaming body uses req.body.drain. :contentReference[oaicite:4]{index=4}
-      req.body.drain { part in
-        switch part {
-        case var .buffer(buffer):
-          do {
-            if let data = buffer.readData(length: buffer.readableBytes) {
-              try fh.write(contentsOf: data) // may throw
-            }
-            return req.eventLoop.makeSucceededFuture(())
-          } catch {
-            return req.eventLoop.makeFailedFuture(error) // <-- convert throw to failed future
+    // Create a promise we can await
+    let donePromise = req.eventLoop.makePromise(of: Void.self)
+    // Stream body to disk. Vapor’s streaming body uses req.body.drain. :contentReference[oaicite:4]{index=4}
+    // Start draining (returns Void in your Vapor)
+    req.body.drain { part in
+      switch part {
+      case var .buffer(buffer):
+        do {
+          if let data = buffer.readData(length: buffer.readableBytes) {
+            try fh.write(contentsOf: data)
           }
-
-        case let .error(error):
-          return req.eventLoop.makeFailedFuture(error)
-
-        case .end:
           return req.eventLoop.makeSucceededFuture(())
+        } catch {
+          // Fail the promise and stop the chain
+          donePromise.fail(error)
+          return req.eventLoop.makeFailedFuture(error)
         }
+
+      case let .error(error):
+        donePromise.fail(error)
+        return req.eventLoop.makeFailedFuture(error)
+
+      case .end:
+        // All bytes delivered
+        do { try fh.close() } catch { /* close failure is rare; treat as error if you want */ }
+        donePromise.succeed(())
+        return req.eventLoop.makeSucceededFuture(())
       }
-      try fh.close()
+    }
+    // ✅ Wait until `.end` (or an error)
+    do {
+      try await donePromise.futureResult.get()
     } catch {
       try? fh.close()
       try? FileManager.default.removeItem(at: tmpURL)
       throw error
     }
-
     // Extract capture date
     let captureDate = extractCaptureDate(fileURL: tmpURL, ext: ext) ?? Date()
 
