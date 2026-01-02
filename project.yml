@@ -1,0 +1,35 @@
+name: TPM
+options:
+  bundleIdPrefix: com.vizlab.tpm
+  deploymentTarget:
+    macOS: "15.0"
+
+packages:
+  Vapor:
+    url: https://github.com/vapor/vapor.git
+    from: 4.0.0
+
+targets:
+  TPM:
+    type: application
+    platform: macOS
+    sources:
+      - path: Sources
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.vizlab.tpm
+        INFOPLIST_FILE: SupportingFiles/Info.plist
+        MARKETING_VERSION: "0.1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        # Optional: if you later turn Sandbox on, you'll need entitlements/bookmarks for /Volumes access.
+    dependencies:
+      - package: Vapor
+        product: Vapor
+
+schemes:
+  TPM:
+    build:
+      targets:
+        TPM: all
+    run:
+      config: Debug
