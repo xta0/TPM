@@ -3,11 +3,15 @@ options:
   bundleIdPrefix: com.vizlab.tpm
   deploymentTarget:
     macOS: "15.0"
+    iOS: "17.0"
 
 packages:
   Vapor:
     url: https://github.com/vapor/vapor.git
     from: 4.0.0
+  Kingfisher:
+    url: https://github.com/onevcat/Kingfisher.git
+    from: 8.0.0
 
 targets:
   TPM:
@@ -25,11 +29,33 @@ targets:
     dependencies:
       - package: Vapor
         product: Vapor
+  TPMiOS:
+    type: application
+    platform: iOS
+    sources:
+      - path: Sources/iOS
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.vizlab.tpmios
+        INFOPLIST_FILE: Sources/iOS/SupportingFiles/Info.plist
+        MARKETING_VERSION: "0.1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        TARGETED_DEVICE_FAMILY: "1,2" # iPhone + iPad
+        SUPPORTS_MACCATALYST: "NO"
+    dependencies:
+      - package: Kingfisher
+        product: Kingfisher
 
 schemes:
   TPM:
     build:
       targets:
         TPM: all
+    run:
+      config: Debug
+  TPMiOS:
+    build:
+      targets:
+        TPMiOS: all
     run:
       config: Debug
